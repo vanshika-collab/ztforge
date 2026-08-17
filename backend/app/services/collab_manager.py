@@ -16,6 +16,7 @@ from dataclasses import dataclass, field
 import socketio
 
 from app.core.logging import get_logger
+from app.core.security import decode_access_token
 
 logger = get_logger("ztforge.collab")
 
@@ -35,6 +36,7 @@ class CollabManager:
         self._register_handlers()
 
     def _register_handlers(self) -> None:
+        self.sio.on("connect", handler=self.on_connect)
         self.sio.on("canvas:join", handler=self.on_join)
         self.sio.on("canvas:leave", handler=self.on_leave)
         self.sio.on("cursor:move", handler=self.on_cursor_move)
@@ -46,13 +48,41 @@ class CollabManager:
         self.sio.on("comment:add", handler=self.on_comment)
         self.sio.on("disconnect", handler=self.on_disconnect)
 
+    async def on_connect(self, sid: str, environ: dict, auth: dict | None) -> bool:
+        """Validate JWT on connection."""
+        token = auth.get("token") if auth else None
+        if not token:
+            logger.warning("socket_connect_no_auth", sid=sid)
+            return False
+
+        try:
+            payload = await decode_access_token(token)
+            await self.sio.save_session(sid, {
+                "user_id": payload.sub,
+                "username": payload.preferred_username,
+                "email": payload.email,
+            })
+            logger.info("socket_connected", sid=sid, user=payload.sub)
+            return True
+        except ValueError as e:
+            logger.warning("socket_auth_failed", sid=sid, error=str(e))
+            return False
+
     async def on_join(self, sid: str, data: dict[str, Any]) -> None:
         canvas_id = data.get("canvas_id", "")
-        user_id = data.get("user_id", "")
-        display_name = data.get("display_name", "Anonymous")
-
         if not canvas_id:
             return
+
+        # Get authenticated user from session
+        session = await self.sio.get_session(sid)
+        user_id = session.get("user_id", "")
+        display_name = session.get("username", "Anonymous")
+
+        if not user_id:
+            logger.warning("canvas_join_no_session", sid=sid)
+            return
+
+        # TODO: Query DB to verify user has access to this canvas
 
         # Assign a color for this user's cursor
         colors = ["#3b82f6", "#ef4444", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899", "#06b6d4", "#f97316"]

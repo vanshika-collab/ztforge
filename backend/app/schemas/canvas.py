@@ -22,16 +22,16 @@ class Position(BaseModel):
 
 class NodeData(BaseModel):
     """Common fields for all node types on the canvas."""
-    label: str
-    node_type: str  # identity, device, application, data, network_segment, policy_gate
+    label: str = Field(max_length=100)
+    node_type: str = Field(max_length=50)
     properties: dict[str, Any] = Field(default_factory=dict)
-    compliance_status: str | None = None  # for device nodes
-    classification: str | None = None  # for data nodes
+    compliance_status: str | None = Field(None, max_length=50)
+    classification: str | None = Field(None, max_length=50)
 
 
 class CanvasNode(BaseModel):
-    id: str
-    type: str
+    id: str = Field(max_length=50)
+    type: str = Field(max_length=50)
     position: Position
     data: NodeData
     width: float | None = None
@@ -40,16 +40,16 @@ class CanvasNode(BaseModel):
 
 class EdgePolicy(BaseModel):
     """Policy attached to an edge — determines if traffic is allowed."""
-    action: str = "deny"  # "allow" or "deny"
+    action: str = Field(max_length=20, default="deny")
     conditions: dict[str, Any] = Field(default_factory=dict)
     # e.g. {"require_mfa": true, "allowed_hours": "09:00-17:00", "require_compliant_device": true}
 
 
 class CanvasEdge(BaseModel):
-    id: str
-    source: str
-    target: str
-    label: str | None = None
+    id: str = Field(max_length=50)
+    source: str = Field(max_length=50)
+    target: str = Field(max_length=50)
+    label: str | None = Field(None, max_length=100)
     animated: bool = False
     policy: EdgePolicy | None = None
 
@@ -58,15 +58,15 @@ class CanvasEdge(BaseModel):
 
 class CanvasCreate(BaseModel):
     title: str = Field(min_length=1, max_length=200)
-    description: str | None = None
+    description: str | None = Field(None, max_length=2000)
     visibility: str = "private"
 
 
 class CanvasUpdate(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=200)
-    description: str | None = None
-    nodes: list[CanvasNode] | None = None
-    edges: list[CanvasEdge] | None = None
+    description: str | None = Field(None, max_length=2000)
+    nodes: list[CanvasNode] | None = Field(None, max_length=500)
+    edges: list[CanvasEdge] | None = Field(None, max_length=1000)
     viewport: dict[str, Any] | None = None
     version: int  # required for OCC — client must send current version
 

@@ -9,7 +9,7 @@ let socket: Socket | null = null;
 let reconnectAttempts = 0;
 const MAX_RECONNECT_ATTEMPTS = 10;
 
-export function getSocket(): Socket {
+export function getSocket(token: string): Socket {
   if (!socket) {
     socket = io("/", {
       path: "/socket.io",
@@ -18,6 +18,9 @@ export function getSocket(): Socket {
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
       reconnectionAttempts: MAX_RECONNECT_ATTEMPTS,
+      auth: {
+        token, // Send JWT for authentication
+      },
     });
 
     socket.on("connect", () => {

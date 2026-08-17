@@ -41,6 +41,7 @@ def create_app() -> FastAPI:
         redoc_url="/api/redoc" if settings.debug else None,
         lifespan=lifespan,
         redirect_slashes=False,
+        debug=False,  # Never expose debug mode in production
     )
 
     # ── CORS ─────────────────────────────────────────────────
