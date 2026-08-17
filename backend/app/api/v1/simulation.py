@@ -13,6 +13,7 @@ from app.core.logging import audit_log
 from app.core.security import TokenPayload
 from app.models.canvas import Canvas
 from app.models.policy import Policy
+from app.models.simulation_run import SimulationRun
 from app.schemas.simulation import SimulationRequest, SimulationResult, SCENARIO_CONFIGS
 from app.services.simulator import BreachSimulator
 from sqlalchemy import select
@@ -52,6 +53,18 @@ async def run_simulation(
     )
 
     sim_result = simulator.run(body)
+
+    # Persist simulation run
+    sim_run = SimulationRun(
+        canvas_id=body.canvas_id,
+        scenario=body.scenario,
+        risk_score=sim_result.risk_score,
+        risk_level=sim_result.risk_level,
+        result=sim_result.model_dump(),
+        run_by=user.sub,
+    )
+    db.add(sim_run)
+    await db.flush()
 
     await audit_log(
         "simulation_run",

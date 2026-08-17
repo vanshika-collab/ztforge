@@ -58,8 +58,9 @@ class BreachSimulator:
         frontier: list[str] = [source_id]
         blocked_at: AttackStep | None = None
         step_num = 0
+        max_steps = 1000  # Prevent infinite loops
 
-        while frontier:
+        while frontier and step_num < max_steps:
             current = frontier.pop(0)
             if current in visited:
                 continue

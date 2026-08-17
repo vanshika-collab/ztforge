@@ -13,13 +13,14 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel
 
 from app.core.config import Settings, get_settings
-from app.core.dependencies import get_current_user, get_db
+from app.core.dependencies import get_current_user, get_db, get_redis
 from app.core.logging import audit_log
-from app.core.security import TokenPayload
+from app.core.security import TokenPayload, RateLimiter
 from app.models.user import User
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+import redis.asyncio as aioredis
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -47,10 +48,17 @@ class UserProfile(BaseModel):
 @router.post("/token", response_model=TokenResponse)
 async def exchange_token(
     body: TokenExchangeRequest,
+    request: Request,
     settings: Annotated[Settings, Depends(get_settings)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    redis_client: Annotated[aioredis.Redis, Depends(get_redis)],
 ):
     """Exchange authorization code for access + refresh tokens."""
+    # Rate limit by IP to prevent credential stuffing
+    client_ip = request.client.host if request.client else "unknown"
+    limiter = RateLimiter(redis_client, max_requests=5, window_seconds=60)
+    if not await limiter.check(f"auth:{client_ip}"):
+        raise HTTPException(status_code=429, detail="Too many auth attempts")
     async with httpx.AsyncClient(timeout=10.0) as client:
         try:
             resp = await client.post(
@@ -81,8 +89,12 @@ async def exchange_token(
     from app.core.security import decode_access_token
     try:
         payload = await decode_access_token(data["access_token"], settings)
-    except ValueError:
-        raise HTTPException(status_code=401, detail="Invalid token from Keycloak")
+    except ValueError as e:
+        # Log the actual error for debugging
+        import structlog
+        logger = structlog.get_logger()
+        logger.error("token_decode_failed", error=str(e), token_preview=data["access_token"][:50])
+        raise HTTPException(status_code=401, detail=f"Invalid token: {str(e)}")
 
     stmt = select(User).where(User.keycloak_id == payload.sub)
     result = await db.execute(stmt)

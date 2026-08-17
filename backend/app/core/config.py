@@ -49,6 +49,7 @@ class Settings(BaseSettings):
 
     # ── OPA ──────────────────────────────────────────────────
     opa_url: str = "http://opa:8181"
+    opa_token: str = ""
 
     # ── Rate Limiting ────────────────────────────────────────
     rate_limit_per_second: int = 10

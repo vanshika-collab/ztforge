@@ -15,15 +15,17 @@ logger = get_logger("ztforge.policy_engine")
 
 
 class PolicyEngine:
-    def __init__(self, opa_url: str | None = None):
+    def __init__(self, opa_url: str | None = None, opa_token: str | None = None):
         self.opa_url = opa_url or get_settings().opa_url
+        self.opa_token = opa_token or get_settings().opa_token
+        self.headers = {"Authorization": f"Bearer {self.opa_token}"} if self.opa_token else {}
 
     async def evaluate(self, policy_path: str, input_data: dict[str, Any]) -> dict[str, Any]:
         """Query OPA for a policy decision."""
         url = f"{self.opa_url}/v1/data/{policy_path}"
         try:
             async with httpx.AsyncClient(timeout=5.0) as client:
-                resp = await client.post(url, json={"input": input_data})
+                resp = await client.post(url, json={"input": input_data}, headers=self.headers)
                 resp.raise_for_status()
                 return resp.json().get("result", {})
         except httpx.ConnectError:
@@ -42,7 +44,7 @@ class PolicyEngine:
                 resp = await client.put(
                     url,
                     content=rego_content,
-                    headers={"Content-Type": "text/plain"},
+                    headers={"Content-Type": "text/plain", **self.headers},
                 )
                 resp.raise_for_status()
                 logger.info("policy_pushed", policy_id=policy_id)
@@ -56,7 +58,7 @@ class PolicyEngine:
         url = f"{self.opa_url}/v1/data/{data_path}"
         try:
             async with httpx.AsyncClient(timeout=5.0) as client:
-                resp = await client.put(url, json=data)
+                resp = await client.put(url, json=data, headers=self.headers)
                 resp.raise_for_status()
                 return True
         except (httpx.ConnectError, httpx.HTTPStatusError) as e:
@@ -66,7 +68,7 @@ class PolicyEngine:
     async def health_check(self) -> bool:
         try:
             async with httpx.AsyncClient(timeout=3.0) as client:
-                resp = await client.get(f"{self.opa_url}/health")
+                resp = await client.get(f"{self.opa_url}/health", headers=self.headers)
                 return resp.status_code == 200
         except httpx.ConnectError:
             return False

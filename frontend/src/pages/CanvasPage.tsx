@@ -8,15 +8,16 @@ import { ArrowLeft, Zap, Download, ShieldCheck } from "lucide-react";
 import { Canvas } from "../components/Canvas";
 import { SimulatorPanel } from "../components/SimulatorPanel";
 import { hubApi } from "../lib/api";
+import { useAuth } from "../hooks/useAuth";
 import type { SimulationResult } from "../lib/types";
 
 export function CanvasPage() {
   const { id } = useParams<{ id: string }>();
   const [showSimulator, setShowSimulator] = useState(false);
   const [showExport, setShowExport] = useState(false);
-  // TODO(collab): get from auth context once Keycloak is integrated
-  const userId = "demo-user";
-  const displayName = "Demo User";
+  const { user } = useAuth();
+  const userId = user?.sub || "unknown";
+  const displayName = user?.display_name || "Unknown User";
 
   if (!id) {
     return (

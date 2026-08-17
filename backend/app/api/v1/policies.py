@@ -60,6 +60,15 @@ async def list_policies_for_canvas(
     user: Annotated[TokenPayload, Depends(check_rate_limit)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
+    canvas = await db.get(Canvas, canvas_id)
+    if not canvas:
+        raise HTTPException(status_code=404, detail="Canvas not found")
+
+    db_user = (await db.execute(select(User).where(User.keycloak_id == user.sub))).scalar_one_or_none()
+    is_owner = db_user and canvas.owner_id == db_user.id
+    if canvas.visibility == "private" and not is_owner and not user.is_admin:
+        raise HTTPException(status_code=403, detail="Access denied")
+
     stmt = select(Policy).where(Policy.canvas_id == canvas_id)
     result = await db.execute(stmt)
     return result.scalars().all()
@@ -75,6 +84,15 @@ async def update_policy(
     policy = await db.get(Policy, policy_id)
     if not policy:
         raise HTTPException(status_code=404, detail="Policy not found")
+
+    canvas = await db.get(Canvas, policy.canvas_id)
+    if not canvas:
+        raise HTTPException(status_code=404, detail="Canvas not found")
+
+    db_user = (await db.execute(select(User).where(User.keycloak_id == user.sub))).scalar_one_or_none()
+    is_owner = db_user and canvas.owner_id == db_user.id
+    if not is_owner and not user.is_editor:
+        raise HTTPException(status_code=403, detail="Edit permission required")
 
     update_data = body.model_dump(exclude_unset=True)
     for field, value in update_data.items():
@@ -93,5 +111,15 @@ async def delete_policy(
     policy = await db.get(Policy, policy_id)
     if not policy:
         raise HTTPException(status_code=404, detail="Policy not found")
+
+    canvas = await db.get(Canvas, policy.canvas_id)
+    if not canvas:
+        raise HTTPException(status_code=404, detail="Canvas not found")
+
+    db_user = (await db.execute(select(User).where(User.keycloak_id == user.sub))).scalar_one_or_none()
+    is_owner = db_user and canvas.owner_id == db_user.id
+    if not is_owner and not user.is_editor:
+        raise HTTPException(status_code=403, detail="Edit permission required")
+
     await db.delete(policy)
     await audit_log("policy_deleted", user.sub, "policy", str(policy_id))

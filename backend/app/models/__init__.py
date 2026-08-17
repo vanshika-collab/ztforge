@@ -19,5 +19,6 @@ from app.models.user import User  # noqa: E402, F401
 from app.models.canvas import Canvas  # noqa: E402, F401
 from app.models.policy import Policy  # noqa: E402, F401
 from app.models.template import Template  # noqa: E402, F401
+from app.models.simulation_run import SimulationRun  # noqa: E402, F401
 
-__all__ = ["Base", "User", "Canvas", "Policy", "Template"]
+__all__ = ["Base", "User", "Canvas", "Policy", "Template", "SimulationRun"]
