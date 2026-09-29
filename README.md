@@ -1,4 +1,4 @@
-> **Note:** This project is hosted on GitLab because my GitHub account (`sonoftroll`) was suspended on 29 September 2026, before this submission. I have no prior violations, I believe it is a mistake, and I have filed a reinstatement request with GitHub Support. This repository is my original work, and the code is unchanged from my local commit history.
+> **Note:** This project is hosted on GitLab because my GitHub account (`sonoftroll`) was suspended on 29 September 2026, before this submission. I have no prior violations, I believe it is a mistake, and I have filed a reinstatement request with GitHub Support. This repository is my original work, and the code is unchanged from my local commit history. Hence currently I had no other option but to push it on my friend's GitHub for submission. The project was authorised entirely by KISHAN PANDEY.
 # ZTForge
 
 **Visual Zero Trust Architecture Designer** — design, simulate, and enforce Zero Trust policies on a drag-and-drop canvas.
